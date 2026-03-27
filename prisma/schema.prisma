@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  CANCELLED
+}
+
+model Parent {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  phone     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  students  Student[]
+
+  @@map("parents")
+}
+
+model Student {
+  id          Int       @id @default(autoincrement())
+  name        String
+  dateOfBirth DateTime? @map("date_of_birth")
+  parentId    Int       @map("parent_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  parent              Parent              @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  subscriptions       Subscription[]
+  classRegistrations  ClassRegistration[]
+
+  @@map("students")
+}
+
+model Class {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  dayOfWeek   DayOfWeek @map("day_of_week")
+  startTime   String    @map("start_time") // HH:mm format
+  endTime     String    @map("end_time")   // HH:mm format
+  maxStudents Int       @map("max_students")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  classRegistrations ClassRegistration[]
+
+  @@map("classes")
+}
+
+model Subscription {
+  id                Int                @id @default(autoincrement())
+  studentId         Int                @map("student_id")
+  totalSessions     Int                @map("total_sessions")
+  remainingSessions Int                @map("remaining_sessions")
+  startDate         DateTime           @map("start_date")
+  endDate           DateTime           @map("end_date")
+  status            SubscriptionStatus @default(ACTIVE)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  student            Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classRegistrations ClassRegistration[]
+
+  @@map("subscriptions")
+}
+
+model ClassRegistration {
+  id               Int                @id @default(autoincrement())
+  studentId        Int                @map("student_id")
+  classId          Int                @map("class_id")
+  subscriptionId   Int                @map("subscription_id")
+  registrationDate DateTime           @default(now()) @map("registration_date")
+  classDate        DateTime           @map("class_date") // The actual date of the class session
+  status           RegistrationStatus @default(REGISTERED)
+  cancelledAt      DateTime?          @map("cancelled_at")
+  isSessionRefunded Boolean           @default(false) @map("is_session_refunded")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class        Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, classId, classDate])
+  @@map("class_registrations")
+}
